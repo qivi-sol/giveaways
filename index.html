@@ -234,6 +234,8 @@
 <script>
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 
+const DATA_VERSION = 3;
+
 const INITIAL = [
   {id:1,title:'Кресло LiberNovo от ERGONOMIKA',prize:'Кресло LiberNovo Omni OC1',deadline:'2026-07-04',conditions:'Подписка на @Romancev768 + нажать «Участвовать»',cat:'Мебель',done:false},
   {id:2,title:'Розыгрыш от Ингосстрах',prize:'iPhone 17 Pro, iPhone Air, Whoop, Яндекс Станция и др.',deadline:'2026-07-17',conditions:'Подписка на Telegram-канал + написать комментарий',cat:'Разное',done:false},
@@ -253,11 +255,12 @@ const INITIAL = [
   {id:16,title:'Mazda CX-5 — стикеры на конкурс',prize:'10 стикеров-купонов на розыгрыш Mazda CX-5',deadline:'2026-06-24',conditions:'Подписка на канал «Тачка за сутки» + нажать «Участвую»',cat:'Авто',done:false},
 ];
 
-let data = (() => { try { return JSON.parse(localStorage.getItem('gw_v2') || 'null') || INITIAL; } catch(e){ return INITIAL; } })();
+const STORAGE_KEY = 'gw_v' + DATA_VERSION;
+let data = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || INITIAL; } catch(e){ return INITIAL; } })();
 let nextId = Math.max(...data.map(g=>g.id), 0) + 1;
 let filter = 'all';
 
-function save() { try { localStorage.setItem('gw_v2', JSON.stringify(data)); } catch(e){} }
+function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){} }
 
 function daysLeft(d) {
   const dl = new Date(d); dl.setHours(0,0,0,0);
@@ -270,7 +273,7 @@ function fmtDate(d) {
 
 function renderStats() {
   const total = data.length;
-  const active = data.filter(g => !g.done && daysLeft(g.deadline) >= 0).length;
+  const active = data.filter(g => daysLeft(g.deadline) >= 0).length;
   const part = data.filter(g => g.done).length;
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="stat-label">Всего</div><div class="stat-value">${total}</div></div>
@@ -281,11 +284,11 @@ function renderStats() {
 
 function renderCards() {
   let list = [...data];
-  if(filter === 'active') list = list.filter(g => !g.done && daysLeft(g.deadline) >= 0);
-  else if(filter === 'urgent') list = list.filter(g => !g.done && daysLeft(g.deadline) >= 0 && daysLeft(g.deadline) <= 5);
+  if(filter === 'active') list = list.filter(g => daysLeft(g.deadline) >= 0);
+  else if(filter === 'urgent') list = list.filter(g => daysLeft(g.deadline) >= 0 && daysLeft(g.deadline) <= 5);
   else if(filter === 'done') list = list.filter(g => g.done);
-  else if(filter === 'expired') list = list.filter(g => daysLeft(g.deadline) < 0 && !g.done);
-  else list = list.filter(g => daysLeft(g.deadline) >= 0 || g.done);
+  else if(filter === 'expired') list = list.filter(g => daysLeft(g.deadline) < 0);
+  else list = list.filter(g => daysLeft(g.deadline) >= 0);
 
   list.sort((a,b) => {
     if(a.done !== b.done) return a.done ? 1 : -1;
