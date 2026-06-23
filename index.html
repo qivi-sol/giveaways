@@ -94,6 +94,8 @@
   .card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .card-main { flex: 1; min-width: 0; }
   .card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { color: var(--accent); text-decoration: underline; }
   .card-prize { font-size: 13px; color: var(--text2); margin-bottom: 10px; display: flex; align-items: flex-start; gap: 5px; }
   .card-prize i { flex-shrink: 0; margin-top: 1px; }
 
@@ -183,7 +185,7 @@
   <div class="add-section">
     <h2><i class="ti ti-sparkles" aria-hidden="true"></i> Добавить розыгрыш</h2>
     <p class="add-hint">Вставь текст поста — ИИ сам разберёт условия и дату</p>
-    <textarea id="new-text" placeholder="Вставь текст розыгрыша из Telegram..."></textarea>
+    <textarea id="new-text" placeholder="Вставь текст розыгрыша из Telegram (со ссылкой на пост — ИИ её подхватит)..."></textarea>
     <div class="add-row">
       <button class="ai-btn" id="ai-btn" onclick="parseAndAdd()">
         <i class="ti ti-wand" aria-hidden="true"></i> Разобрать с ИИ
@@ -215,6 +217,10 @@
             <option>Мебель</option>
             <option>Разное</option>
           </select>
+        </div>
+        <div class="form-group full">
+          <label>Ссылка на конкурс</label>
+          <input type="url" id="m-url" placeholder="https://t.me/...">
         </div>
         <div class="form-group full">
           <label>Условия участия</label>
@@ -306,14 +312,14 @@ function renderCards() {
     let urgentClass = '';
     if(g.done) badge = `<span class="badge badge-done"><i class="ti ti-check" style="font-size:10px" aria-hidden="true"></i> Участвую</span>`;
     else if(days < 0) badge = `<span class="badge badge-expired">Завершён</span>`;
-    else if(days === 0) { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px" aria-hidden="true"></i> Сегодня итоги!</span>`; urgentClass = 'card-urgent'; }
-    else if(days <= 3) { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px" aria-hidden="true"></i> Через ${days} дн.</span>`; urgentClass = 'card-urgent'; }
-    else badge = `<span class="badge badge-deadline"><i class="ti ti-calendar" style="font-size:10px" aria-hidden="true"></i> ${fmtDate(g.deadline)}</span>`;
+    else if(days === 0) { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px" aria-hidden="true"></i> Сегодня итоги</span>`; urgentClass = 'card-urgent'; }
+    else if(days <= 3) { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px" aria-hidden="true"></i> Скоро итоги</span>`; urgentClass = 'card-urgent'; }
+    else badge = `<span class="badge badge-deadline"><i class="ti ti-calendar" style="font-size:10px" aria-hidden="true"></i> Активен</span>`;
 
     return `<div class="card ${g.done ? 'participated' : urgentClass}">
       <div class="card-row">
         <div class="card-main">
-          <div class="card-title">${g.title}</div>
+          <div class="card-title">${g.url ? `<a href="${g.url}" target="_blank" rel="noopener">${g.title} <i class="ti ti-external-link" style="font-size:11px;opacity:0.6"></i></a>` : g.title}</div>
           <div class="card-prize"><i class="ti ti-trophy" style="font-size:13px; color:var(--amber)" aria-hidden="true"></i> ${g.prize}</div>
           <div class="badges">
             ${badge}
@@ -356,10 +362,11 @@ function saveManual() {
   const deadline = document.getElementById('m-date').value;
   const cat = document.getElementById('m-cat').value;
   const conditions = document.getElementById('m-cond').value.trim();
+  const url = document.getElementById('m-url').value.trim();
   if(!title || !deadline) { showToast('Укажи название и дату'); return; }
-  data.push({id:nextId++, title, prize: prize||'—', deadline, conditions: conditions||'—', cat, done:false});
+  data.push({id:nextId++, title, prize: prize||'—', deadline, conditions: conditions||'—', cat, url: url||'', done:false});
   save(); render();
-  ['m-title','m-prize','m-date','m-cond'].forEach(id => document.getElementById(id).value = '');
+  ['m-title','m-prize','m-date','m-cond','m-url'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('manual-form').classList.remove('show');
   showToast('Добавлено!');
 }
@@ -379,7 +386,7 @@ async function parseAndAdd() {
         model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         messages: [{role:'user', content:`Разбери текст розыгрыша и верни ТОЛЬКО JSON без markdown и пояснений:
-{"title":"краткое название до 60 символов","prize":"что конкретно разыгрывается","deadline":"дата итогов YYYY-MM-DD, если не указана — 2026-07-31","conditions":"условия участия кратко до 100 символов","cat":"одна категория: Гаджеты или Авто или Мебель или Разное"}
+{"title":"краткое название до 60 символов","prize":"что конкретно разыгрывается","deadline":"дата итогов YYYY-MM-DD, если не указана — 2026-07-31","conditions":"условия участия кратко до 100 символов","cat":"одна категория: Гаджеты или Авто или Мебель или Разное","url":"прямая ссылка на пост/канал если есть в тексте, иначе пустая строка"}
 
 Текст розыгрыша:
 ${text}`}]
