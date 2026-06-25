@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер розыгрышей</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface2: #f0efed;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #9b9b96;
+    --accent: #5b3de8;
+    --accent-bg: #eeebff;
+    --accent-text: #3d27b0;
+    --green: #2d7a3a;
+    --green-bg: #e6f4e8;
+    --amber: #8a5c00;
+    --amber-bg: #fff3d4;
+    --red: #b02020;
+    --red-bg: #fdeaea;
+    --blue: #1a5fa8;
+    --blue-bg: #e6f0fb;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131312;
+      --surface: #1e1e1c;
+      --surface2: #272724;
+      --border: rgba(255,255,255,0.09);
+      --border2: rgba(255,255,255,0.16);
+      --text: #f0efea;
+      --text2: #a0a09a;
+      --text3: #6a6a65;
+      --accent: #8b6cf5;
+      --accent-bg: #2a2050;
+      --accent-text: #c4b0ff;
+      --green: #5ab86a;
+      --green-bg: #1a3320;
+      --amber: #f0b840;
+      --amber-bg: #2e2208;
+      --red: #f07070;
+      --red-bg: #2e1010;
+      --blue: #6aadff;
+      --blue-bg: #0e2040;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05);
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .badge-tg { background: #0d2a3a; color: #6ab8f0; }
+    .badge-max { background: #1e0d40; color: #b580ff; }
+  }
+
+  html { font-size: 16px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+
+  .app { max-width: 680px; margin: 0 auto; padding: 0 16px 80px; }
+
+  /* Header */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 16px; border-bottom: 0.5px solid var(--border); margin-bottom: 20px; }
+  .top-bar h1 { font-size: 20px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .top-bar h1 i { color: var(--accent); font-size: 22px; }
+  .top-bar-right { display: flex; align-items: center; gap: 8px; }
+
+  /* Admin badge */
+  .admin-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: var(--accent-bg); color: var(--accent-text); display: flex; align-items: center; gap: 4px; cursor: default; }
+  .user-badge { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; background: var(--surface2); color: var(--text3); display: flex; align-items: center; gap: 4px; cursor: pointer; transition: background 0.15s; }
+  .user-badge:hover { background: var(--accent-bg); color: var(--accent-text); }
+
+  /* Connection status */
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); display: inline-block; transition: background 0.3s; }
+  .sync-dot.online { background: var(--green); }
+  .sync-dot.offline { background: var(--red); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat { background: var(--surface); border-radius: var(--radius-sm); padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-value { font-size: 26px; font-weight: 600; color: var(--text); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.green { color: var(--green); }
+
+  /* Filters */
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .f-btn { font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .f-btn:hover { background: var(--surface2); color: var(--text); }
+  .f-btn.active { background: var(--accent-bg); color: var(--accent-text); border-color: transparent; }
+
+  /* Cards */
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; transition: box-shadow 0.15s; position: relative; overflow: hidden; }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.08); }
+  .card.participated { opacity: 0.55; }
+  .card.participated::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); border-radius: 3px 0 0 3px; }
+  .card-urgent::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--red); border-radius: 3px 0 0 3px; }
+
+  .card-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card-main { flex: 1; min-width: 0; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { color: var(--accent); text-decoration: underline; }
+  .card-prize { font-size: 13px; color: var(--text2); margin-bottom: 10px; display: flex; align-items: flex-start; gap: 5px; }
+  .card-prize i { flex-shrink: 0; margin-top: 1px; }
+
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 3px; }
+  .badge-deadline { background: var(--amber-bg); color: var(--amber); }
+  .badge-urgent { background: var(--red-bg); color: var(--red); }
+  .badge-done { background: var(--green-bg); color: var(--green); }
+  .badge-expired { background: var(--surface2); color: var(--text3); }
+  .badge-cat { background: var(--accent-bg); color: var(--accent-text); }
+  .badge-tg { background: #e8f4fd; color: #0088cc; }
+  .badge-max { background: #f0e6ff; color: #7b2fff; }
+
+  .card-conditions { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); font-size: 12px; color: var(--text3); display: flex; gap: 6px; align-items: flex-start; }
+  .card-conditions i { flex-shrink: 0; font-size: 13px; margin-top: 1px; }
+
+  .check-btn { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid var(--border2); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 17px; transition: all 0.15s; margin-top: 2px; }
+  .check-btn:hover { border-color: var(--green); color: var(--green); }
+  .check-btn.checked { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+
+  .empty { text-align: center; padding: 48px 16px; color: var(--text3); font-size: 15px; }
+  .empty i { font-size: 40px; display: block; margin-bottom: 12px; }
+
+  /* Add section (admin only) */
+  .add-section { margin-top: 28px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .add-section h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+  .add-section h2 i { color: var(--accent); }
+  .add-hint { font-size: 13px; color: var(--text3); margin-bottom: 12px; margin-top: 3px; }
+  .add-section textarea { width: 100%; font-size: 13px; font-family: inherit; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 12px; resize: vertical; min-height: 100px; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; line-height: 1.6; }
+  .add-section textarea:focus { border-color: var(--accent); }
+  .add-section textarea::placeholder { color: var(--text3); }
+
+  .ai-btn { font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: opacity 0.15s; }
+  .ai-btn:hover { opacity: 0.88; }
+  .ai-btn:disabled { opacity: 0.5; cursor: default; }
+  .manual-btn { font-size: 13px; font-weight: 500; padding: 9px 16px; border-radius: 8px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: background 0.15s; }
+  .manual-btn:hover { background: var(--surface2); }
+  .loading-txt { font-size: 13px; color: var(--text3); display: none; align-items: center; gap: 5px; }
+  .loading-txt.show { display: flex; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.9s linear infinite; display: inline-block; }
+
+  /* Manual form */
+  .manual-form { display: none; margin-top: 14px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+  .manual-form.show { display: block; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea { font-size: 13px; font-family: inherit; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 10px; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface); }
+  .save-btn { margin-top: 12px; font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 8px; border: none; background: var(--green-bg); color: var(--green); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s; }
+  .save-btn:hover { opacity: 0.8; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); font-size: 13px; padding: 10px 18px; border-radius: 8px; transition: transform 0.25s; z-index: 999; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Card actions */
+  .card-actions { display: flex; gap: 4px; align-items: flex-start; flex-direction: column; }
+  .edit-btn { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid var(--border2); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 15px; transition: all 0.15s; }
+  .edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Modals */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.18); padding: 24px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .modal h3 i { color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  .modal-save { font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; transition: opacity 0.15s; }
+  .modal-save:hover { opacity: 0.88; }
+  .modal-cancel { font-size: 13px; font-weight: 500; padding: 9px 16px; border-radius: 8px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: background 0.15s; }
+  .modal-cancel:hover { background: var(--surface2); }
+  .modal-delete { font-size: 13px; font-weight: 500; padding: 9px 16px; border-radius: 8px; border: none; background: var(--red-bg); color: var(--red); cursor: pointer; margin-left: auto; transition: opacity 0.15s; }
+  .modal-delete:hover { opacity: 0.8; }
+
+  /* Login modal */
+  .login-modal { max-width: 360px; }
+  .login-modal input { width: 100%; font-size: 14px; font-family: inherit; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; margin-top: 8px; }
+  .login-modal input:focus { border-color: var(--accent); }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 6px; display: none; }
+  .login-error.show { display: block; }
+
+  /* Loading screen */
+  .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 9999; transition: opacity 0.3s; }
+  .loading-screen.hidden { opacity: 0; pointer-events: none; }
+  .loading-screen i { font-size: 40px; color: var(--accent); }
+  .loading-screen p { font-size: 14px; color: var(--text3); }
+
+  /* Firebase not configured screen */
+  .setup-screen { max-width: 540px; margin: 40px auto; padding: 0 16px; }
+  .setup-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; }
+  .setup-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .setup-card h2 i { color: var(--accent); }
+  .setup-card p { font-size: 13px; color: var(--text2); margin-bottom: 8px; line-height: 1.7; }
+  .setup-card code { font-size: 12px; background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+  .setup-card ol { margin-left: 20px; }
+  .setup-card ol li { font-size: 13px; color: var(--text2); margin-bottom: 6px; line-height: 1.7; }
+  .setup-card a { color: var(--accent); }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input { flex: 1; min-width: 160px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; }
+  .toolbar input:focus { border-color: var(--accent); }
+  .toolbar-btn { font-size: 13px; font-weight: 500; padding: 9px 14px; border-radius: 8px; border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 5px; }
+  .toolbar-btn:hover { background: var(--surface2); }
+
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+    .stat { padding: 10px 12px; }
+    .stat-value { font-size: 22px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loading-screen">
+  <i class="ti ti-gift"></i>
+  <p>Подключение к базе данных…</p>
+</div>
+
+<!-- Setup screen (shown when Firebase not configured) -->
+<div id="setup-screen" style="display:none">
+  <div class="setup-screen">
+    <div class="setup-card">
+      <h2><i class="ti ti-settings"></i> Нужна настройка Firebase</h2>
+      <p>Чтобы данные были общими для всех, нужно подключить Firebase. Это бесплатно и займёт ~5 минут.</p>
+      <ol>
+        <li>Зайди на <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → создай проект</li>
+        <li>В проекте: <b>Build → Realtime Database → Create database</b> (выбери "test mode")</li>
+        <li>В настройках проекта (⚙️) → <b>General → Your apps → Web</b> → скопируй конфиг</li>
+        <li>Открой файл <code>index.html</code> и замени значения в блоке <code>FIREBASE CONFIG</code> в начале скрипта</li>
+        <li>Там же установи свой пароль администратора в <code>ADMIN_PASSWORD</code></li>
+      </ol>
+      <p style="margin-top:12px; padding: 10px; background: var(--amber-bg); border-radius: 8px; color: var(--amber);">
+        ⚠️ В Firebase Console → Realtime Database → Rules установи правила из README ниже для защиты данных.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div class="app" id="main-app" style="display:none">
+
+  <div class="top-bar">
+    <h1><i class="ti ti-gift" aria-hidden="true"></i> Розыгрыши</h1>
+    <div class="top-bar-right">
+      <span class="sync-dot" id="sync-dot" title="Статус подключения"></span>
+      <span id="role-badge" class="user-badge" onclick="showLoginModal()" title="Войти как администратор">
+        <i class="ti ti-user" style="font-size:12px"></i> Гость
+      </span>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div id="upcoming" style="margin-bottom:16px"></div>
+
+  <div class="toolbar">
+    <input id="search" placeholder="🔍 Поиск розыгрыша…">
+    <!-- Admin-only buttons, hidden for guests -->
+    <button class="toolbar-btn admin-only" id="export-btn" onclick="exportData()" style="display:none">
+      <i class="ti ti-download"></i> Экспорт
+    </button>
+    <button class="toolbar-btn admin-only" id="import-btn-wrap" onclick="document.getElementById('importFile').click()" style="display:none">
+      <i class="ti ti-upload"></i> Импорт
+    </button>
+    <input type="file" id="importFile" style="display:none">
+  </div>
+
+  <div class="filters">
+    <button class="f-btn active" data-filter="all">Все</button>
+    <button class="f-btn" data-filter="active">Активные</button>
+    <button class="f-btn" data-filter="urgent">Скоро итоги</button>
+    <button class="f-btn" data-filter="done">Участвую</button>
+    <button class="f-btn" data-filter="won">Выиграл</button>
+    <button class="f-btn" data-filter="calendar">Календарь</button>
+    <button class="f-btn" data-filter="expired">Завершены</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <!-- Add section — admin only -->
+  <div class="add-section" id="add-section" style="display:none">
+    <h2><i class="ti ti-plus" aria-hidden="true"></i> Добавить розыгрыш</h2>
+    <div class="add-hint">Вставь текст розыгрыша — Claude разберёт его автоматически</div>
+    <textarea id="new-text" placeholder="Вставь сюда текст поста с розыгрышем…" rows="4"></textarea>
+    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:center">
+      <button class="ai-btn" id="ai-btn" onclick="parseAndAdd()">
+        <i class="ti ti-sparkles" aria-hidden="true"></i> Разобрать через AI
+      </button>
+      <button class="manual-btn" onclick="toggleManual()">
+        <i class="ti ti-pencil" aria-hidden="true"></i> Вручную
+      </button>
+      <span class="loading-txt" id="loading-txt">
+        <i class="ti ti-loader-2 spin" aria-hidden="true"></i> Обрабатываю…
+      </span>
+    </div>
+    <div class="manual-form" id="manual-form">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Название розыгрыша</label>
+          <input type="text" id="m-title" placeholder="Например: iPhone 17 от iSpark">
+        </div>
+        <div class="form-group full">
+          <label>Приз</label>
+          <input type="text" id="m-prize" placeholder="Что разыгрывается">
+        </div>
+        <div class="form-group">
+          <label>Дата итогов</label>
+          <input type="date" id="m-date">
+          <label style="margin-top:6px">Время</label>
+          <input type="time" id="m-time">
+        </div>
+        <div class="form-group">
+          <label>Категория</label>
+          <select id="m-cat">
+            <option>Гаджеты</option>
+            <option>Авто</option>
+            <option>Мебель</option>
+            <option>Разное</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Источник</label>
+          <select id="m-source">
+            <option value="TELEGRAM">📱 Telegram</option>
+            <option value="MAX">🟣 MAX</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Ссылка на конкурс</label>
+          <input type="url" id="m-url" placeholder="https://t.me/…">
+        </div>
+        <div class="form-group full">
+          <label>Условия участия</label>
+          <input type="text" id="m-cond" placeholder="Подписка на канал + нажать кнопку">
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveManual()">
+        <i class="ti ti-check" aria-hidden="true"></i> Сохранить
+      </button>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- Edit modal (admin only) -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3><i class="ti ti-pencil" aria-hidden="true"></i> Редактировать розыгрыш</h3>
+    <input type="hidden" id="e-id">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Название</label>
+        <input type="text" id="e-title">
+      </div>
+      <div class="form-group full">
+        <label>Приз</label>
+        <input type="text" id="e-prize">
+      </div>
+      <div class="form-group">
+        <label>Дата итогов</label>
+        <input type="date" id="e-date">
+        <label style="margin-top:6px">Время</label>
+        <input type="time" id="e-time">
+      </div>
+      <div class="form-group">
+        <label>Категория</label>
+        <select id="e-cat">
+          <option>Гаджеты</option>
+          <option>Авто</option>
+          <option>Мебель</option>
+          <option>Разное</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Источник</label>
+        <select id="e-source">
+          <option value="TELEGRAM">📱 Telegram</option>
+          <option value="MAX">🟣 MAX</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Ссылка</label>
+        <input type="url" id="e-url">
+      </div>
+      <div class="form-group full">
+        <label>Условия участия</label>
+        <input type="text" id="e-cond">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="saveEdit()"><i class="ti ti-check"></i> Сохранить</button>
+      <button class="modal-cancel" onclick="closeEdit()">Отмена</button>
+      <button class="modal-delete" onclick="deleteEntry()"><i class="ti ti-trash"></i> Удалить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login modal -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal login-modal">
+    <h3><i class="ti ti-lock" aria-hidden="true"></i> Вход администратора</h3>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:4px">Введи пароль для доступа к управлению</p>
+    <input type="password" id="admin-pass-input" placeholder="Пароль администратора" onkeydown="if(event.key==='Enter')tryLogin()">
+    <p class="login-error" id="login-error">Неверный пароль</p>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="tryLogin()"><i class="ti ti-login"></i> Войти</button>
+      <button class="modal-cancel" onclick="closeLoginModal()">Отмена</button>
+      <button class="modal-cancel" id="logout-btn" onclick="doLogout()" style="display:none; margin-left:auto; color:var(--red)">Выйти</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     FIREBASE + APP SCRIPT
+     ============================================================ -->
+<script type="module">
+// ================================================================
+//  ██████╗  ██████╗ ███╗   ██╗███████╗██╗ ██████╗
+//  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
+//  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+//  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+//  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+//   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+//
+//  ✏️  ЗАМЕНИТЬ ЭТИ ЗНАЧЕНИЯ СВОИМИ ИЗ FIREBASE CONSOLE
+// ================================================================
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBmnuN76GWH8NUsc2ii73-4NxGWaMx4--Y",
+  authDomain:        "qivi-22675.firebaseapp.com",
+  databaseURL:       "https://qivi-22675-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "qivi-22675",
+  storageBucket:     "qivi-22675.firebasestorage.app",
+  messagingSenderId: "1085000423978",
+  appId:             "1:1085000423978:web:b4bce3e5ea152d3c0d0153",
+  measurementId:     "G-TEHHXB3DKW"
+};
+
+// ✏️ ПАРОЛЬ АДМИНИСТРАТОРА — измени на свой!
+const ADMIN_PASSWORD = "qivi1234";
+
+// ================================================================
+//  Всё остальное не трогай, если не уверен
+// ================================================================
+
+import { initializeApp }                           from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove, push, get }
+                                                    from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+import { getAuth, signInAnonymously, onAuthStateChanged }
+                                                    from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+
+// ── Check if Firebase is configured ─────────────────────────────
+const isConfigured = FIREBASE_CONFIG.apiKey !== "ЗАМЕНИ_НА_СВОЙ_API_KEY";
+if (!isConfigured) {
+  document.getElementById('loading-screen').classList.add('hidden');
+  setTimeout(() => { document.getElementById('loading-screen').style.display = 'none'; }, 400);
+  document.getElementById('setup-screen').style.display = 'block';
+  throw new Error("Firebase not configured");
+}
+
+// ── Init Firebase ────────────────────────────────────────────────
+const app  = initializeApp(FIREBASE_CONFIG);
+const db   = getDatabase(app);
+const auth = getAuth(app);
+
+// ── State ────────────────────────────────────────────────────────
+let isAdmin  = false;
+let userId   = null;
+let giveaways = [];       // from /giveaways — read by everyone
+let myData   = {};        // from /userdata/{uid} — personal done/won flags
+let filter   = 'all';
+let searchQuery = '';
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+// Check persisted admin session
+isAdmin = localStorage.getItem('gw_admin') === ADMIN_PASSWORD;
+
+// ── Auth: anonymous sign-in to get stable userId ─────────────────
+onAuthStateChanged(auth, user => {
+  if (user) {
+    userId = user.uid;
+    startListeners();
+  }
+});
+
+signInAnonymously(auth).catch(err => {
+  // Fallback: use localStorage UUID if auth fails
+  userId = localStorage.getItem('gw_uid') || crypto.randomUUID();
+  localStorage.setItem('gw_uid', userId);
+  startListeners();
+});
+
+// ── Realtime listeners ───────────────────────────────────────────
+function startListeners() {
+  // 1) Giveaways list (shared, admin writes)
+  onValue(ref(db, 'giveaways'), snapshot => {
+    const val = snapshot.val();
+    if (val) {
+      // Convert Firebase object to array
+      giveaways = Object.entries(val).map(([fbKey, item]) => ({ fbKey, ...item }));
+      giveaways.sort((a,b) => new Date(a.deadline) - new Date(b.deadline));
+    } else {
+      giveaways = [];
+    }
+    render();
+    setSyncOnline();
+  }, err => {
+    setSyncOffline();
+  });
+
+  // 2) Personal data (user-specific done/won)
+  onValue(ref(db, `userdata/${userId}`), snapshot => {
+    myData = snapshot.val() || {};
+    render();
+  });
+
+  // Show main app after listeners set up
+  hideLoadingScreen();
+}
+
+function hideLoadingScreen() {
+  const ls = document.getElementById('loading-screen');
+  ls.classList.add('hidden');
+  setTimeout(() => { ls.style.display = 'none'; }, 400);
+  document.getElementById('main-app').style.display = 'block';
+  updateRoleBadge();
+}
+
+// ── Firebase write helpers ───────────────────────────────────────
+
+// Admin: save full giveaways array
+async function saveGiveaways() {
+  if (!isAdmin) return;
+  // Convert array to object keyed by fbKey
+  const obj = {};
+  giveaways.forEach(g => {
+    const key = g.fbKey || push(ref(db, 'giveaways')).key;
+    const { fbKey, ...rest } = g;
+    obj[key] = rest;
+  });
+  await set(ref(db, 'giveaways'), obj);
+}
+
+// User: toggle personal done/won
+async function saveMyFlag(gId, field, value) {
+  await set(ref(db, `userdata/${userId}/${gId}/${field}`), value);
+}
+
+// ── Role helpers ─────────────────────────────────────────────────
+function updateRoleBadge() {
+  const badge = document.getElementById('role-badge');
+  const addSection = document.getElementById('add-section');
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn-wrap');
+  const logoutBtn = document.getElementById('logout-btn');
+
+  if (isAdmin) {
+    badge.className = 'admin-badge';
+    badge.innerHTML = '<i class="ti ti-crown" style="font-size:12px"></i> Администратор';
+    badge.onclick = showLoginModal; // show logout option
+    addSection.style.display = 'block';
+    exportBtn.style.display = 'flex';
+    importBtn.style.display = 'flex';
+    logoutBtn.style.display = 'block';
+  } else {
+    badge.className = 'user-badge';
+    badge.innerHTML = '<i class="ti ti-user" style="font-size:12px"></i> Гость';
+    badge.onclick = showLoginModal;
+    addSection.style.display = 'none';
+    exportBtn.style.display = 'none';
+    importBtn.style.display = 'none';
+    logoutBtn.style.display = 'none';
+  }
+  render();
+}
+
+// ── Sync indicator ───────────────────────────────────────────────
+function setSyncOnline() { document.getElementById('sync-dot').className = 'sync-dot online'; }
+function setSyncOffline() { document.getElementById('sync-dot').className = 'sync-dot offline'; }
+
+// ── Login / Logout ───────────────────────────────────────────────
+window.showLoginModal = function() {
+  document.getElementById('admin-pass-input').value = '';
+  document.getElementById('login-error').classList.remove('show');
+  const logoutBtn = document.getElementById('logout-btn');
+  logoutBtn.style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('login-modal').classList.add('show');
+  setTimeout(() => document.getElementById('admin-pass-input').focus(), 100);
+};
+
+window.closeLoginModal = function() {
+  document.getElementById('login-modal').classList.remove('show');
+};
+
+window.tryLogin = function() {
+  const pw = document.getElementById('admin-pass-input').value;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    localStorage.setItem('gw_admin', ADMIN_PASSWORD);
+    closeLoginModal();
+    updateRoleBadge();
+    showToast('Вы вошли как администратор 👑');
+  } else {
+    document.getElementById('login-error').classList.add('show');
+    document.getElementById('admin-pass-input').value = '';
+    document.getElementById('admin-pass-input').focus();
+  }
+};
+
+window.doLogout = function() {
+  isAdmin = false;
+  localStorage.removeItem('gw_admin');
+  closeLoginModal();
+  updateRoleBadge();
+  showToast('Вы вышли из режима администратора');
+};
+
+// ── Render ───────────────────────────────────────────────────────
+function daysLeft(d) {
+  const dl = new Date(d); dl.setHours(0,0,0,0);
+  return Math.ceil((dl - TODAY) / 86400000);
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
+}
+function countdown(g) {
+  const target = new Date((g.deadline||'')+'T'+(g.time||'23:59'));
+  const diff = target - new Date();
+  if (diff <= 0) return 'Завершён';
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return d > 0 ? `${d}д ${h}ч` : `${h}ч ${m}м`;
+}
+
+function renderStats() {
+  const total  = giveaways.length;
+  const active = giveaways.filter(g => daysLeft(g.deadline) >= 0).length;
+  const part   = giveaways.filter(g => myData[g.id]?.done).length;
+  const week   = giveaways.filter(g => daysLeft(g.deadline) >= 0 && daysLeft(g.deadline) <= 7).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Всего</div><div class="stat-value">${total}</div></div>
+    <div class="stat"><div class="stat-label">Активных</div><div class="stat-value accent">${active}</div></div>
+    <div class="stat"><div class="stat-label">Участвую</div><div class="stat-value green">${part}</div></div>
+    <div class="stat"><div class="stat-label">Эта неделя</div><div class="stat-value">${week}</div></div>
+  `;
+}
+
+function renderUpcoming() {
+  const list = [...giveaways].filter(g => daysLeft(g.deadline) >= 0).slice(0, 3);
+  const el = document.getElementById('upcoming');
+  if (!el || !list.length) { if(el) el.innerHTML=''; return; }
+  el.innerHTML = `<div class="card"><b>📅 Ближайшие итоги</b><div style="margin-top:8px">` +
+    list.map(g => `${fmtDate(g.deadline)} — ${g.title}`).join('<br>') + `</div></div>`;
+}
+
+function renderCards() {
+  const cardsEl = document.getElementById('cards');
+  let list = [...giveaways];
+
+  if (searchQuery) list = list.filter(g => (g.title + g.prize).toLowerCase().includes(searchQuery));
+
+  if (filter === 'calendar') {
+    const groups = {};
+    list.forEach(g => (groups[g.deadline] = groups[g.deadline] || []).push(g));
+    cardsEl.innerHTML = Object.keys(groups).sort().map(d =>
+      `<div class="card"><b>${fmtDate(d)}</b><div style="margin-top:6px">${groups[d].map(x=>'• '+x.title).join('<br>')}</div></div>`
+    ).join('');
+    return;
+  }
+
+  if (filter === 'active')  list = list.filter(g => daysLeft(g.deadline) >= 0);
+  else if (filter === 'urgent')  list = list.filter(g => daysLeft(g.deadline) >= 0 && daysLeft(g.deadline) <= 5);
+  else if (filter === 'done')    list = list.filter(g => myData[g.id]?.done);
+  else if (filter === 'won')     list = list.filter(g => myData[g.id]?.won);
+  else if (filter === 'expired') list = list.filter(g => daysLeft(g.deadline) < 0);
+  else list = list.filter(g => daysLeft(g.deadline) >= 0);
+
+  list.sort((a,b) => {
+    const aDone = !!myData[a.id]?.done, bDone = !!myData[b.id]?.done;
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return new Date(a.deadline) - new Date(b.deadline);
+  });
+
+  if (!list.length) {
+    cardsEl.innerHTML = `<div class="empty"><i class="ti ti-mood-empty"></i>Нет розыгрышей в этой категории</div>`;
+    return;
+  }
+
+  cardsEl.innerHTML = list.map(g => {
+    const days    = daysLeft(g.deadline);
+    const isDone  = !!myData[g.id]?.done;
+    const isWon   = !!myData[g.id]?.won;
+
+    let badge = '';
+    let urgentClass = '';
+    if (isDone)        badge = `<span class="badge badge-done"><i class="ti ti-check" style="font-size:10px"></i> Участвую</span>`;
+    else if (days < 0) badge = `<span class="badge badge-expired">Завершён</span>`;
+    else if (days === 0) { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px"></i> Сегодня итоги</span>`; urgentClass = 'card-urgent'; }
+    else if (days <= 3)  { badge = `<span class="badge badge-urgent"><i class="ti ti-flame" style="font-size:10px"></i> Скоро итоги</span>`; urgentClass = 'card-urgent'; }
+    else badge = `<span class="badge badge-deadline"><i class="ti ti-calendar" style="font-size:10px"></i> Активен</span>`;
+
+    const wonBadge = isWon ? `<span class="badge" style="background:var(--amber-bg);color:var(--amber)">🏆 Выиграл</span>` : '';
+
+    const sourceBadge = g.source === 'MAX'
+      ? `<span class="badge badge-max">🟣 MAX</span>`
+      : `<span class="badge badge-tg">📱 TG</span>`;
+
+    return `<div class="card ${isDone ? 'participated' : urgentClass}">
+      <div class="card-row">
+        <div class="card-main">
+          <div class="card-title">${g.url ? `<a href="${g.url}" target="_blank" rel="noopener">${g.title} <i class="ti ti-external-link" style="font-size:11px;opacity:0.6"></i></a>` : g.title}</div>
+          <div class="card-prize"><i class="ti ti-trophy" style="font-size:13px;color:var(--amber)"></i> ${g.prize}</div>
+          <div class="badges">${badge}<span class="badge badge-cat">${g.cat||'Разное'}</span>${sourceBadge}${wonBadge}</div>
+          <div style="margin-top:8px;font-size:12px">📅 ${fmtDate(g.deadline)} ${g.time||''} · ⏳ ${countdown(g)}</div>
+          <div class="card-conditions"><i class="ti ti-list-check"></i><span>${g.conditions||'—'}</span></div>
+        </div>
+        <div class="card-actions">
+          <button class="check-btn ${isDone?'checked':''}" onclick="toggleDone('${g.id}')" title="${isDone?'Убрать отметку':'Отметить участие'}">
+            <i class="ti ti-check"></i>
+          </button>
+          <button class="check-btn ${isWon?'checked':''}" onclick="toggleWon('${g.id}')" title="${isWon?'Убрать':'Выиграл!'}">🏆</button>
+          ${isAdmin ? `<button class="edit-btn" onclick="openEdit('${g.fbKey}')" title="Редактировать"><i class="ti ti-pencil"></i></button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function render() {
+  if (!document.getElementById('main-app')) return;
+  renderStats();
+  renderUpcoming();
+  renderCards();
+}
+
+// ── Toggle personal flags (any user) ────────────────────────────
+window.toggleDone = async function(gId) {
+  const current = myData[gId]?.done || false;
+  myData[gId] = myData[gId] || {};
+  myData[gId].done = !current;
+  render();
+  await saveMyFlag(gId, 'done', !current);
+};
+
+window.toggleWon = async function(gId) {
+  const current = myData[gId]?.won || false;
+  myData[gId] = myData[gId] || {};
+  myData[gId].won = !current;
+  render();
+  await saveMyFlag(gId, 'won', !current);
+};
+
+// ── Admin: Add giveaway manually ─────────────────────────────────
+window.toggleManual = function() {
+  document.getElementById('manual-form').classList.toggle('show');
+};
+
+window.saveManual = async function() {
+  if (!isAdmin) return;
+  const title = document.getElementById('m-title').value.trim();
+  const deadline = document.getElementById('m-date').value;
+  if (!title || !deadline) { showToast('Укажи название и дату'); return; }
+  const newRef = push(ref(db, 'giveaways'));
+  const id = newRef.key;
+  const entry = {
+    id,
+    title,
+    prize: document.getElementById('m-prize').value.trim() || '—',
+    deadline,
+    time: document.getElementById('m-time').value,
+    cat: document.getElementById('m-cat').value,
+    source: document.getElementById('m-source').value,
+    url: document.getElementById('m-url').value.trim(),
+    conditions: document.getElementById('m-cond').value.trim() || '—',
+  };
+  await set(newRef, entry);
+  ['m-title','m-prize','m-date','m-cond','m-url'].forEach(i => { document.getElementById(i).value = ''; });
+  document.getElementById('m-time').value = '';
+  document.getElementById('m-source').value = 'TELEGRAM';
+  document.getElementById('manual-form').classList.remove('show');
+  showToast('Розыгрыш добавлен!');
+};
+
+// ── Admin: AI parse ──────────────────────────────────────────────
+window.parseAndAdd = async function() {
+  if (!isAdmin) return;
+  const text = document.getElementById('new-text').value.trim();
+  if (!text) { showToast('Вставь текст розыгрыша'); return; }
+  const btn = document.getElementById('ai-btn');
+  const loading = document.getElementById('loading-txt');
+  btn.disabled = true; loading.classList.add('show');
+  try {
+    const res = await fetch('https://small-mode-3c1b.qivi8037.workers.dev/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{role:'user', content:`Разбери текст розыгрыша и верни ТОЛЬКО JSON без markdown и пояснений:
+{"title":"краткое название до 60 символов","prize":"что конкретно разыгрывается","deadline":"дата итогов YYYY-MM-DD, если не указана — 2026-07-31","time":"время итогов HH:MM если указано иначе пустая строка","conditions":"условия участия кратко до 100 символов","cat":"одна категория: Гаджеты или Авто или Мебель или Разное","source":"TELEGRAM если ссылки на t.me или упоминается Telegram/тг, MAX если есть max.ru или упоминается MAX/Макс, иначе TELEGRAM","url":"прямая ссылка на пост/канал если есть в тексте, иначе пустая строка"}
+
+Текст розыгрыша:
+${text}`}]
+      })
+    });
+    const d = await res.json();
+    const raw = (d.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(raw);
+    const newRef = push(ref(db, 'giveaways'));
+    const id = newRef.key;
+    await set(newRef, { id, source: parsed.source || 'TELEGRAM', ...parsed });
+    document.getElementById('new-text').value = '';
+    showToast('Розыгрыш добавлен!');
+  } catch(e) {
+    console.error(e);
+    showToast('Не удалось разобрать — попробуй вручную');
+  }
+  btn.disabled = false; loading.classList.remove('show');
+};
+
+// ── Admin: Edit modal ────────────────────────────────────────────
+window.openEdit = function(fbKey) {
+  if (!isAdmin) return;
+  const g = giveaways.find(x => x.fbKey === fbKey);
+  if (!g) return;
+  document.getElementById('e-id').value = fbKey;
+  document.getElementById('e-title').value = g.title || '';
+  document.getElementById('e-prize').value = g.prize || '';
+  document.getElementById('e-date').value = g.deadline || '';
+  document.getElementById('e-time').value = g.time || '';
+  document.getElementById('e-url').value = g.url || '';
+  document.getElementById('e-cond').value = g.conditions || '';
+  const catSel = document.getElementById('e-cat');
+  for (let opt of catSel.options) opt.selected = opt.value === g.cat;
+  const srcSel = document.getElementById('e-source');
+  for (let opt of srcSel.options) opt.selected = opt.value === (g.source || 'TELEGRAM');
+  document.getElementById('edit-modal').classList.add('show');
+};
+
+window.closeEdit = function() {
+  document.getElementById('edit-modal').classList.remove('show');
+};
+
+window.saveEdit = async function() {
+  if (!isAdmin) return;
+  const fbKey = document.getElementById('e-id').value;
+  const title = document.getElementById('e-title').value.trim();
+  const deadline = document.getElementById('e-date').value;
+  if (!title || !deadline) { showToast('Укажи название и дату'); return; }
+  const g = giveaways.find(x => x.fbKey === fbKey);
+  const updates = {
+    title,
+    prize: document.getElementById('e-prize').value.trim() || '—',
+    deadline,
+    time: document.getElementById('e-time').value,
+    cat: document.getElementById('e-cat').value,
+    source: document.getElementById('e-source').value,
+    url: document.getElementById('e-url').value.trim(),
+    conditions: document.getElementById('e-cond').value.trim() || '—',
+    id: g?.id || fbKey
+  };
+  await set(ref(db, `giveaways/${fbKey}`), updates);
+  closeEdit();
+  showToast('Сохранено!');
+};
+
+window.deleteEntry = async function() {
+  if (!isAdmin) return;
+  const fbKey = document.getElementById('e-id').value;
+  if (!confirm('Удалить этот розыгрыш? Это действие нельзя отменить.')) return;
+  await remove(ref(db, `giveaways/${fbKey}`));
+  closeEdit();
+  showToast('Удалено');
+};
+
+// ── Admin: Export / Import ───────────────────────────────────────
+window.exportData = function() {
+  if (!isAdmin) return;
+  const blob = new Blob([JSON.stringify(giveaways.map(({fbKey,...rest})=>rest), null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'giveaways-backup.json'; a.click();
+};
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'importFile') {
+    if (!isAdmin) return;
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = async () => {
+      try {
+        const arr = JSON.parse(r.result);
+        if (!Array.isArray(arr)) throw new Error('Not array');
+        // Clear and re-upload
+        await remove(ref(db, 'giveaways'));
+        for (const item of arr) {
+          const newRef = push(ref(db, 'giveaways'));
+          const { fbKey, ...rest } = item;
+          rest.id = rest.id || newRef.key;
+          await set(newRef, rest);
+        }
+        showToast(`Импортировано ${arr.length} розыгрышей`);
+      } catch(err) {
+        showToast('Ошибка: неверный формат файла');
+      }
+    };
+    r.readAsText(f);
+  }
+});
+
+// ── Search & filters ─────────────────────────────────────────────
+document.addEventListener('input', e => {
+  if (e.target.id === 'search') { searchQuery = e.target.value.toLowerCase(); renderCards(); }
+});
+
+document.querySelectorAll('.f-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filter = btn.dataset.filter;
+    render();
+  });
+});
+
+// Close modals on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) { if (e.target===this) closeEdit(); });
+document.getElementById('login-modal').addEventListener('click', function(e) { if (e.target===this) closeLoginModal(); });
+
+// ── Toast ─────────────────────────────────────────────────────────
+window.showToast = function(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+};
+
+setInterval(() => render(), 60000);
+
+</script>
+</body>
+</html>
